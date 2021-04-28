@@ -1,7 +1,6 @@
-# -*- coding:utf-8 -*-
-from model_V16 import *
-from random import shuffle
+from random import random, shuffle
 from collections import Counter
+from model.model_V16 import *
 
 import numpy as np
 import os
@@ -12,36 +11,37 @@ FLAGS = easydict.EasyDict({"img_height": 128,
                            
                            "img_width": 88,
                            
-                           "tr_txt_path": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/train.txt",
+                           "tr_txt_path": "/content/train.txt",
                            
-                           "tr_txt_name": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/GEI_IDList_train.txt",
+                           "tr_txt_name": "/content/GEI_IDList_train.txt",
                            
-                           "tr_img_path": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/GEI/",
+                           "tr_img_path": "/content/GEI/",
                            
-                           "te_txt_path": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/test.txt",
+                           "te_txt_path": "/content/test.txt",
                            
-                           "te_txt_name": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/GEI_IDList_test_fix.txt",
+                           "te_txt_name": "/content/GEI_IDList_test_fix.txt",
                            
-                           "te_img_path": "D:/[1]DB/[4]etc_experiment/Body_age/OULP-Age/GEI/",
+                           "te_img_path": "/content/GEI/",
                            
-                           "batch_size": 137,
+                           "batch_size": 300,
                            
-                           "epochs": 300,
-                           
-                           "num_classes": 86,
-                           
+                           "epochs": 500,
+
                            "lr": 0.0001,
-                           
-                           "save_checkpoint": "",
-                           
-                           "graphs": "C:/Users/Yuhwan/Downloads/", 
-                           
+
+                           "num_classes": 86,
+
                            "train": True,
                            
                            "pre_checkpoint": False,
                            
-                           "pre_checkpoint_path": ""})
+                           "pre_checkpoint_path": "",
+                           
+                           "save_checkpoint": "/content/drive/MyDrive/4th_paper/GEI_age_estimation/V16_checkpoint",
+                           
+                           "graphs": "/content/drive/MyDrive/4th_paper/GEI_age_estimation/"})
 
+# optim = tf.keras.optimizers.SGD(FLAGS.lr, momentum=0.9)
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.5)
 
 def tr_func(img_list, lab_list):
@@ -114,7 +114,7 @@ def cal_loss(model, images, labels):
         p_t = (labels * tf.nn.sigmoid(logits)) + ((1 - labels) * (1 - tf.nn.sigmoid(logits)))
         alpha_factor = labels * 0.25 + (1 - labels) * (1 - 0.25)
         modulating_factor = tf.pow((1.0 - p_t), 2.0)
-        ce = (-( (tf.math.log_sigmoid(logits)*labels + (tf.math.log(1 - tf.math.sigmoid(logits)))*(1-labels))))        
+        ce = (-( (tf.math.log(tf.math.sigmoid(logits)+0.000001)*labels + (tf.math.log(1 - tf.math.sigmoid(logits) + 0.000001))*(1-labels))))        
 
         c_loss = tf.reduce_sum(alpha_factor * modulating_factor * ce, axis=-1)
 
@@ -144,7 +144,7 @@ def cal_mae(model, images, labels):
     for i in range(137):
 
         age_predict = tf.nn.sigmoid(logits[i])
-        age_predict = tf.cast(tf.less_equal(0.5, age_predict), tf.int32)
+        age_predict = tf.cast(tf.less(0.5, age_predict), tf.int32)
         age_predict = tf.reduce_sum(age_predict)
 
         ae += tf.abs(labels[i] - age_predict)
@@ -232,15 +232,15 @@ def main():
                     with val_summary_writer.as_default():
                         tf.summary.scalar('MAE', MAE, step=count)
 
-                    #num_ = int(count // 100)
-                    #model_dir = "%s/%s" % (FLAGS.save_checkpoint, num_)
-                    #if not os.path.isdir(model_dir):
-                    #   os.makedirs(model_dir)
-                    #   print("Make {} files to save checkpoint".format(num_))
+                    num_ = int(count // 100)
+                    model_dir = "%s/%s" % (FLAGS.save_checkpoint, num_)
+                    if not os.path.isdir(model_dir):
+                      os.makedirs(model_dir)
+                      print("Make {} files to save checkpoint".format(num_))
 
-                    #ckpt = tf.train.Checkpoint(model=model, optim=optim)
-                    #ckpt_dir = model_dir + "/" + "[7]_{}.ckpt".format(count)
-                    #ckpt.save(ckpt_dir)
+                    ckpt = tf.train.Checkpoint(model=model, optim=optim)
+                    ckpt_dir = model_dir + "/" + "V_16_{}.ckpt".format(count)
+                    ckpt.save(ckpt_dir)
                     
                 count += 1
 
